@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+python-multipart
+aiofiles
+pydantic
+numpy
+torch
+torchaudio
+pymilvus
+python-dotenv
+typing-extensions
