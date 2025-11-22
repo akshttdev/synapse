@@ -1,21 +1,31 @@
-# Dockerfile
-FROM python:3.10-slim
-
-# system deps
-RUN apt-get update && apt-get install -y ffmpeg build-essential libsndfile1 git \
-  && rm -rf /var/lib/apt/lists/*
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# copy
-COPY ./app /app/app
-COPY requirements.txt /app/requirements.txt
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    ffmpeg \
+    libsm6 \
+    libxext6 \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
-# install python deps
-RUN pip install --no-cache-dir -r /app/requirements.txt
+# Install PyTorch CPU
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+
+# Copy app code FIRST
+COPY requirements.txt .
+COPY . .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install ImageBind LAST (so COPY doesn't overwrite it)
+RUN git clone https://github.com/facebookresearch/ImageBind.git && \
+    cd ImageBind && pip install -e .
 
 EXPOSE 8000
 
-ENV PYTHONUNBUFFERED=1
-
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
