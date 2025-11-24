@@ -7,15 +7,18 @@ export class APIClient {
     this.baseUrl = baseUrl;
   }
 
-  async search(request: any) {
-    const response = await fetch(`${this.baseUrl}/api/v1/search`, {
+  async search({ query, top_k }: { query: string; top_k: number }) {
+    const response = await fetch(`${this.baseUrl}/api/v1/search/text`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
+      body: JSON.stringify({
+        query,
+        top_k,
+      }),
     });
 
     if (!response.ok) {
-      throw new Error('Search failed');
+      throw new Error(`Search failed: ${response.status}`);
     }
 
     return response.json();

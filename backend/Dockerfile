@@ -1,31 +1,33 @@
-FROM python:3.11-slim
+# backend/Dockerfile
+
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
 
 WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    git \
+    python3.10 \
+    python3-pip \
     ffmpeg \
     libsm6 \
     libxext6 \
-    wget \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install PyTorch CPU
-RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+# Upgrade pip
+RUN pip3 install --no-cache-dir --upgrade pip
 
-# Copy app code FIRST
+# Copy requirements
 COPY requirements.txt .
-COPY . .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-# Install ImageBind LAST (so COPY doesn't overwrite it)
-RUN git clone https://github.com/facebookresearch/ImageBind.git && \
-    cd ImageBind && pip install -e .
+# Copy application code
+COPY . .
 
+# Expose port
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command (override in docker-compose)
+CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
