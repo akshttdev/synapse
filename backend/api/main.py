@@ -1,8 +1,4 @@
 # backend/api/main.py
-"""
-FastAPI application entry point
-"""
-
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
@@ -15,43 +11,42 @@ from api.routes import search, upload, health
 from core.config import get_settings
 from core.cache import get_cache_manager
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
-
 settings = get_settings()
 
-# Global state
 app_state = {}
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup and shutdown events"""
-    logger.info("🚀 Starting ScaleSearch API...")
-    
-    # Initialize cache
-    app_state["cache"] = get_cache_manager()
-    
-    logger.info("✓ All services initialized")
-    
+    logger.info(f"Starting {settings.PROJECT_NAME}...")
+    # initialize cache (redis)
+    try:
+        app_state["cache"] = get_cache_manager()
+        logger.info("✓ Redis cache initialized")
+    except Exception as e:
+        logger.warning(f"Cache init failed: {e}")
+
+    # warm embedder lazily (do not block startup)
+    try:
+        from core.embeddings import get_embedder
+        get_embedder(device=settings.MODEL_DEVICE, batch_size=settings.BATCH_SIZE)
+        logger.info("✓ Embedder initialized (singleton)")
+    except Exception as e:
+        logger.warning(f"Embedder warm-up failed: {e}")
+
     yield
-    
-    # Cleanup
+
     logger.info("Shutting down...")
     app_state.clear()
 
 
-# Create FastAPI app
-app = FastAPI(
-    title="ScaleSearch API",
-    version="1.0.0",
-    lifespan=lifespan
-)
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.VERSION, lifespan=lifespan)
 
-# Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
+    allow_origins=["*"],  # tighten in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,35 +57,23 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
-    """Add latency tracking"""
     start_time = time.time()
     response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = f"{process_time:.3f}"
+    response.headers["X-Process-Time"] = f"{time.time() - start_time:.3f}"
     return response
 
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Global exception handler"""
-    logger.error(f"Unhandled exception: {exc}", exc_info=True)
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"}
-    )
+    logger.exception("Unhandled exception")
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 
-# Routes
-app.include_router(search.router, prefix="/api/v1/search", tags=["search"])
-app.include_router(upload.router, prefix="/api/v1/upload", tags=["upload"])
+app.include_router(search.router, prefix=f"{settings.API_V1_PREFIX}/search", tags=["search"])
+app.include_router(upload.router, prefix=f"{settings.API_V1_PREFIX}/upload", tags=["upload"])
 app.include_router(health.router, prefix="/health", tags=["health"])
 
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
-    return {
-        "message": "ScaleSearch API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+    return {"message": settings.PROJECT_NAME, "version": settings.VERSION, "docs": "/docs"}

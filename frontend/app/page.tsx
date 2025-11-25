@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { Search, Zap, Cpu, Upload, Play, Image as ImageIcon } from 'lucide-react';
+import GradientBlinds from '@/components/GradientBlinds';
 
 export default function LandingPage() {
   return (
+
+    
     <div className="min-h-screen bg-[#09090b] text-white">
       {/* Header */}
       <header className="border-b border-white/10 px-6 py-4">
@@ -36,6 +39,21 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <main className="max-w-7xl mx-auto px-6">
+        <GradientBlinds
+    gradientColors={['#FF9FFC', '#5227FF']}
+    angle={0}
+    noise={0.3}
+    blindCount={12}
+    blindMinWidth={50}
+    spotlightRadius={0.5}
+    spotlightSoftness={1}
+    spotlightOpacity={1}
+    mouseDampening={0.15}
+    distortAmount={0}
+    shineDirection="left"
+    mixBlendMode="lighten"
+    z-index ={-1}
+  />
         <section className="min-h-[60vh] flex flex-col items-center justify-center text-center py-20 md:py-32">
           <div className="flex flex-col gap-6">
             <h1 className="text-5xl md:text-7xl font-black tracking-tighter leading-tight">
