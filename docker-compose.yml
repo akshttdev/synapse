@@ -1,74 +1,15 @@
-version: '3.8'
-
 services:
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: ./backend
+    image: synapse-backend
     ports:
       - "8000:8000"
+    env_file:
+      - ./backend/.env
     environment:
-      - REDIS_URL=redis://redis:6379/0
-      - BROKER_URL=redis://redis:6379/0
-      - RESULT_BACKEND=redis://redis:6379/0
-      - QDRANT_URL=${QDRANT_URL}
-      - QDRANT_API_KEY=${QDRANT_API_KEY}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
-      - S3_PRESIGNED_EXPIRATION=${S3_PRESIGNED_EXPIRATION}
-      - MODEL_DEVICE=${MODEL_DEVICE}
-      - UPLOAD_DIRECT_TO_QDRANT=${UPLOAD_DIRECT_TO_QDRANT}
-      - QDRANT_COLLECTION=${QDRANT_COLLECTION}
+      QDRANT_API_KEY: ${QDRANT_API_KEY}
     volumes:
       - ./backend:/app
-      - ./data:/app/data
-    depends_on:
-      - redis
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: "nvidia"
-              capabilities: ["gpu"]
-
-  worker:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: celery -A celery_app.app worker --loglevel=info --concurrency=1 -Q embeddings,uploads,cleanup,default
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - BROKER_URL=redis://redis:6379/0
-      - RESULT_BACKEND=redis://redis:6379/0
-      - QDRANT_URL=${QDRANT_URL}
-      - QDRANT_API_KEY=${QDRANT_API_KEY}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=${AWS_REGION}
-      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
-      - MODEL_DEVICE=${MODEL_DEVICE}
-      - UPLOAD_DIRECT_TO_QDRANT=${UPLOAD_DIRECT_TO_QDRANT}
-      - QDRANT_COLLECTION=${QDRANT_COLLECTION}
-    volumes:
-      - ./backend:/app
-      - ./data:/app/data
-    depends_on:
-      - redis
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: "nvidia"
-              capabilities: ["gpu"]
 
 volumes:
-  redis_data:
+  data:
